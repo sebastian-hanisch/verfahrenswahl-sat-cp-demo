@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.0
+scipy>=1.11     # nur Gegenprobe im Test und im Freeze-Lauf (HiGHS über scipy.optimize.milp), nie in der App
+ortools>=9.10   # nur Gegenprobe im Test und im Freeze-Lauf (CP-SAT), nie in der App
