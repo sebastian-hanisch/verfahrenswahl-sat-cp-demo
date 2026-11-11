@@ -1,7 +1,6 @@
 # Verfahrenswahl: SAT, CP oder MIP – Streamlit-Demo
 
-<!-- TODO nach dem Deploy: direkt hierher den Live-Link setzen (Leerzeile davor und danach):
-**[→ Demo live ausprobieren](https://sebastianhanisch-verfahrenswahl-sat-cp-demo.streamlit.app/)** -->
+**[→ Demo live ausprobieren](https://sebastianhanisch-verfahrenswahl-sat-cp-demo.streamlit.app/)**
 
 Stück der **sat-constraint-programming**-Linie in der „Konzepte“-Reihe für die Website „Sebastian Hanisch – Operations Research und Machine Learning“, **Zusammenfluss** der beiden Arme: Sie führt zusammen, was im SAT-Arm (Klauseln, Einheitspropagation, Konfliktlernen) und im CP-Arm (AllDifferent in `alldifferent-demo`, Disjunktiv-Propagation in `disjunktiv-edge-finding-demo`) einzeln gezeigt wird, und stellt die Frage der Verfahrenswahl: **Welche Modellwelt gewinnt bei welcher Struktur der Bedingungen?** Fall-Demos der Reihe mit CP-SAT als Löser (`job-shop-demo`, `rcpsp-demo`, `taktfahrplan-demo`) sind Fallbeispiele; diese Demo fragt, **warum** CP-SAT dort passt, und übernimmt keine Zahl aus ihnen.
 
