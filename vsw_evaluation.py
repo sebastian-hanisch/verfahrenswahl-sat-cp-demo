@@ -202,6 +202,75 @@ def latin_instanz_live(ordnung: int, luecken: int, seed: int, cp_budget: int, cd
     return e
 
 
+# Einheiten der Live-Rechnung: `latin_instanz_live` und `jobshop_live` bleiben unverändert; die Einheiten rechnen dieselben Stücke einzeln (Zwischenspeicher und Fortschrittsanzeige
+# der App, vsw_live.py), die Aufbau-Funktionen setzen sie zusammen. Die Tests prüfen, dass das Ergebnis bitgleich dasselbe ist.
+LATIN_CDCL_VARIANTEN = (("cdcl", True, {}), ("cdcl_ohne_lernen", True, dict(learn=False, restarts="none", vsids=False)), ("cdcl_ohne_dual", False, {}))
+
+
+def latin_cdcl_einheit(ordnung: int, luecken: int, seed: int, name: str, cdcl_budget: int) -> dict:
+    """Eine CDCL-Variante (`name` aus `LATIN_CDCL_VARIANTEN`) auf der Rotationsplan-Instanz; derselbe Eintrag wie in `latin_instanz_live`."""
+    inst, _ = R.rotationsplan_instanz(ordnung, luecken, seed)
+    vor = M.vorbelegt_aus_instanz(inst)
+    _, dual, optionen = next(v for v in LATIN_CDCL_VARIANTEN if v[0] == name)
+    nv, kl, un = M.rotation_cnf(ordnung, vor, dual)
+    r = CD.solve(nv, kl + un, conflict_budget=cdcl_budget, noise=False, **optionen)
+    return {"antwort": _antwort_cdcl(r), "konflikte": r.stat["konflikte"], "klauseln": len(kl) + len(un),
+            "geprueft": bool(r.antwort) and M.ist_rotationsplan(M.modell_aus_belegung(ordnung, r.modell), vor)}
+
+
+def latin_mini_einheit(ordnung: int, luecken: int, seed: int, stufe: str, cp_budget: int) -> dict:
+    """Mini-CP A oder C auf der Rotationsplan-Instanz; derselbe Eintrag wie in `latin_instanz_live`."""
+    inst, _ = R.rotationsplan_instanz(ordnung, luecken, seed)
+    lauf = Q.loese(inst.dom_liste(), inst.gruppen, stufe, budget=cp_budget)
+    return {"antwort": lauf.antwort, "knoten": lauf.knoten, "geprueft": lauf.antwort != "loesbar" or R.ist_loesung(inst, lauf.loesung)}
+
+
+def latin_aufbauen(ordnung: int, luecken: int, seed: int, cdcl: dict, mini: dict) -> dict:
+    """Setzt `latin_instanz_live` aus den Einheiten zusammen. `cdcl`: Name -> Eintrag (leer über `C.CDCL_LIVE_MAX`); `mini`: "A"/"C" -> Eintrag."""
+    inst, _ = R.rotationsplan_instanz(ordnung, luecken, seed)
+    e = {"seed": seed, "vorbelegt": len(M.vorbelegt_aus_instanz(inst))}
+    e.update(cdcl)
+    for stufe in ("A", "C"):
+        e["mini_" + stufe.lower()] = mini[stufe]
+    return e
+
+
+def jobshop_mini_einheit(groesse: int, seed: int, stufe: int, js_budget: int) -> dict:
+    """Mini-CP Stufe 1 oder 2 auf dem Job Shop; derselbe Eintrag wie `mini_stufe<stufe>` in `jobshop_live`."""
+    e = J.loese(JI.make_jobshop(groesse, groesse, seed), stufe, budget=js_budget)
+    return {"bewiesen": e.bewiesen, "optimum": e.optimum, "knoten": e.z.knoten, "fehlschlaege": e.z.fehlschlaege}
+
+
+def jobshop_optimum(mini1: dict, mini2: dict):
+    """Das bewiesene Optimum aus den beiden Mini-CP-Einträgen (Stufe 2 zuerst), sonst `None`."""
+    return mini2["optimum"] if mini2["bewiesen"] else (mini1["optimum"] if mini1["bewiesen"] else None)
+
+
+def jobshop_hat_kodierung(groesse: int, seed: int, opt: int) -> bool:
+    """Gibt es zur Entscheidung „Makespan <= Optimum − 1“ eine Order-Kodierung (sonst bleibt `cdcl` leer)?"""
+    return JM.order_cnf(JI.make_jobshop(groesse, groesse, seed), opt - 1) is not None
+
+
+def jobshop_cdcl_einheit(groesse: int, seed: int, opt: int, tag: str, cdcl_budget: int) -> dict:
+    """Der CDCL-Lauf (`tag` "lern" oder "ohne") auf der Order-Kodierung mit H = Optimum − 1; derselbe Eintrag wie in `jobshop_live`."""
+    cnf = JM.order_cnf(JI.make_jobshop(groesse, groesse, seed), opt - 1)
+    kw = {} if tag == "lern" else dict(learn=False, restarts="none", vsids=False)
+    r = CD.solve(cnf.n_variablen, cnf.klauseln, conflict_budget=cdcl_budget, **kw)
+    return {"antwort": _antwort_cdcl(r), "konflikte": r.stat["konflikte"]}
+
+
+def jobshop_aufbauen(groesse: int, seed: int, mini1: dict, mini2: dict, cdcl: dict) -> dict:
+    """Setzt `jobshop_live` aus den Einheiten zusammen. `cdcl`: "lern"/"ohne" -> Eintrag (leer, wenn es keine Kodierung gibt)."""
+    inst = JI.make_jobshop(groesse, groesse, seed)
+    opt = jobshop_optimum(mini1, mini2)
+    out = {"seed": seed, "start_schranke": JI.spt_plan(inst)[0], "mini_stufe1": mini1, "mini_stufe2": mini2, "optimum": opt, "cdcl": None}
+    if opt is not None:
+        cnf = JM.order_cnf(inst, opt - 1)
+        if cnf is not None:
+            out["cdcl"] = {"klauseln": len(cnf.klauseln), "variablen": cnf.n_variablen, **cdcl}
+    return out
+
+
 @lru_cache(maxsize=256)
 def latin_instanz_live_cached(ordnung: int, luecken: int, seed: int, cp_budget: int, cdcl_budget: int) -> dict:
     return latin_instanz_live(ordnung, luecken, seed, cp_budget, cdcl_budget)

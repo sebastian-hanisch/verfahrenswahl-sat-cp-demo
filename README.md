@@ -160,6 +160,7 @@ Median (Maximum); Mini-CP und CDCL (H = Optimum − 1, Budget 100 000 Konflikte,
 | `vsw_modelle.py`, `vsw_jobshop_modelle.py` | ausgeschriebene Modelle in drei Welten, Größenformeln, Wurzelpropagation |
 | `vsw_evaluation.py` | Kennzahlen, Verdikte, Entscheidungsbaum, README-Tabellen |
 | `vsw_constants.py`, `vsw_presets.py`, `vsw_layout.py`, `vsw_visualization.py` | Konstanten und Presets, Permalink, fester Kopf, Abbildungen |
+| `vsw_live.py` | Live-Knöpfe: Zwischenspeicher (`st.cache_data`, je Einheit) und Fortschrittsanzeige (zählt die fertigen Einheiten) |
 | `vsw_cdcl.py`, `vsw_kodierung.py`, `vsw_rng.py` | Kopien aus `sat-cp-planung/kern/` (Kern-Version im Modulkopf) |
 | `vsw_cp_alldiff.py`, `vsw_cp_suche.py`, `vsw_cp_rotation.py`, `vsw_cp_rng.py` | Kopien aus `alldifferent-demo` |
 | `vsw_cp_jobshop.py`, `vsw_cp_jobshop_instanz.py` | Kopien aus `disjunktiv-edge-finding-demo` |

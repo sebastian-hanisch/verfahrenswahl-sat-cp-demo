@@ -14,6 +14,7 @@ import streamlit as st
 
 import vsw_constants as C
 import vsw_evaluation as E
+import vsw_live as L
 import vsw_modelle as MO
 import vsw_visualization as V
 from vsw_layout import dunkles_design, kopf_css
@@ -196,9 +197,13 @@ with tab2:
     st.caption("Ordnung, Lücken und Zufalls-Seed stehen in der Seitenleiste. Spalten: **CDCL** (Konflikte, live bis Ordnung 14), **Mini-CP A und C** (Knoten, live, Budgetabbruch ausgewiesen), "
                f"**CP-SAT** (Konflikte, Branches) und **HiGHS** (Knoten): {NICHT_LIVE}.")
     st.markdown(f"**Einzelinstanz: Ordnung {ordnung}, {luecken} % Lücken, Zufalls-Seed {seed}** (live)")
-    with st.spinner(f"Rechne Ordnung {ordnung} …"):
+    ein_key = (ordnung, luecken, seed, cp_budget, cdcl_budget)
+    if st.session_state.get("latin_einzel_gerechnet") != ein_key:
+        einzel, sek = L.latin_instanz(*ein_key)            # neue Einstellung: mit Fortschrittsanzeige (aus dem Zwischenspeicher, wo schon gerechnet)
+        st.session_state["latin_einzel_gerechnet"] = ein_key
+    else:
         t0 = time.perf_counter()
-        einzel = E.latin_instanz_live_cached(ordnung, luecken, seed, cp_budget, cdcl_budget)
+        einzel = L.latin_instanz_aus_speicher(*ein_key)
         sek = time.perf_counter() - t0
     mc = st.columns(5)
     for col, (schluessel, titel) in zip(mc[:3], (("cdcl", "CDCL (Konflikte)"), ("cdcl_ohne_lernen", "CDCL ohne Lernen (Konflikte)"), ("cdcl_ohne_dual", "CDCL ohne duale Klauseln (Konflikte)"))):
@@ -251,10 +256,9 @@ with tab2:
 
     if ordnung <= 22:
         if st.button("▶ Eigene Verfahren live über die 10 Seeds nachrechnen", key="serie_rechnen"):
-            with st.spinner(f"Rechne 10 Instanzen der Ordnung {ordnung} (Anzeige-Dauer je nach Ordnung Sekunden bis eine Minute) …"):
-                t0 = time.perf_counter()
-                serie = E.latin_serie_live(ordnung, luecken, C.SERIE_SEEDS, cp_budget, cdcl_budget)
-                st.session_state["serie_ergebnis"] = ((ordnung, luecken, cp_budget, cdcl_budget), serie, time.perf_counter() - t0)
+            t0 = time.perf_counter()
+            serie = L.latin_serie(ordnung, luecken, C.SERIE_SEEDS, cp_budget, cdcl_budget)
+            st.session_state["serie_ergebnis"] = ((ordnung, luecken, cp_budget, cdcl_budget), serie, time.perf_counter() - t0)
         erg = st.session_state.get("serie_ergebnis")
         if erg is not None and erg[0] == (ordnung, luecken, cp_budget, cdcl_budget):
             live_stat = E.latin_statistik(erg[1])
@@ -308,9 +312,13 @@ with tab3:
                f"{NICHT_LIVE}.")
     modus = st.radio("Big-M im MIP (vorgerechnet)", C.M_MODI, key="m_radio", horizontal=True, help="Summe: M = Summe aller Dauern. Eng: je Paar spätester Start + Dauer − frühester Start (Fenster aus dem Dispatching-Plan).")
     st.markdown(f"**Einzelinstanz: {jobs} × {jobs}, Zufalls-Seed {seed}** (live)")
-    with st.spinner(f"Rechne {jobs} × {jobs} …"):
+    js_key = (jobs, seed, C.JS_BUDGET, cdcl_budget)
+    if st.session_state.get("js_einzel_gerechnet") != js_key:
+        js, sek = L.jobshop_instanz(*js_key)               # neue Einstellung: mit Fortschrittsanzeige (aus dem Zwischenspeicher, wo schon gerechnet)
+        st.session_state["js_einzel_gerechnet"] = js_key
+    else:
         t0 = time.perf_counter()
-        js = E.jobshop_live_cached(jobs, seed, C.JS_BUDGET, cdcl_budget)
+        js = L.jobshop_instanz_aus_speicher(*js_key)
         sek = time.perf_counter() - t0
     j1, j2, j3, j4 = st.columns(4)
     j1.metric("Mini-CP Stufe 1 (Knoten)", E.zahl(js["mini_stufe1"]["knoten"]) + ("" if js["mini_stufe1"]["bewiesen"] else " (Budget)"))
@@ -355,10 +363,9 @@ with tab3:
 
     if st.button("▶ Eigene Verfahren live über die Seeds der Tabelle nachrechnen", key="js_serie_rechnen"):
         seeds = tuple(zjs["seeds"]) if zjs is not None else C.SERIE_SEEDS
-        with st.spinner(f"Rechne {len(seeds)} Instanzen {jobs} × {jobs} (je nach Größe Sekunden bis eine Minute) …"):
-            t0 = time.perf_counter()
-            serie = E.jobshop_serie_live(jobs, seeds, C.JS_BUDGET, cdcl_budget)
-            st.session_state["js_serie"] = ((jobs, cdcl_budget), serie, time.perf_counter() - t0)
+        t0 = time.perf_counter()
+        serie = L.jobshop_serie(jobs, seeds, C.JS_BUDGET, cdcl_budget)
+        st.session_state["js_serie"] = ((jobs, cdcl_budget), serie, time.perf_counter() - t0)
     erg = st.session_state.get("js_serie")
     if erg is not None and erg[0] == (jobs, cdcl_budget):
         ls = E.jobshop_serie_statistik(erg[1])
